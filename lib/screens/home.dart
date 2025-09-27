@@ -11,15 +11,58 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<Country>> countries;
+  late Future<List<Country>> futureCountries;
+  List<Country> allCountries = [];
+  List<Country> filteredCountries = [];
+  final TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    countries = fetchCountries();
+    futureCountries = fetchCountries();
+    // Setelah data didapat, simpan ke dalam list
+    futureCountries.then((countries) {
+      setState(() {
+        allCountries = countries;
+        filteredCountries = allCountries;
+      });
+    });
+
+    // Listener untuk memanggil fungsi filter setiap ada perubahan teks
+    searchController.addListener(() {
+      filterCountries();
+    });
+  }
+
+  // Hapus listener saat widget dihancurkan untuk mencegah memory leak
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  void filterCountries() {
+    List<Country> results = [];
+    if (searchController.text.isEmpty) {
+      // Jika search bar kosong, tampilkan semua negara
+      results = allCountries;
+    } else {
+      // Jika tidak, filter berdasarkan nama
+      results = allCountries
+          .where((country) => country.name
+              .toLowerCase()
+              .contains(searchController.text.toLowerCase()))
+          .toList();
+    }
+
+    // Update state untuk me-render ulang UI dengan daftar yang sudah difilter
+    setState(() {
+      filteredCountries = results;
+    });
   }
 
   Future<List<Country>> fetchCountries() async {
+    // ... (Fungsi fetchCountries tetap sama)
     final uri = Uri.parse('https://www.apicountries.com/countries');
     final request = await HttpClient().getUrl(uri);
     final response = await request.close();
@@ -39,48 +82,73 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Countries'),
       ),
-      body: FutureBuilder<List<Country>>(
-        future: countries,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No countries found'));
-          }
-
-          final list = snapshot.data!;
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final country = list[i];
-              return Card(
-                child: ListTile(
-                  leading: country.flagsPng != null
-                      ? Image.network(country.flagsPng!, width: 50)
-                      : const SizedBox(width: 50),
-                  title: Text(country.name),
-                  subtitle: Text(country.region),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetailPage(country: country),
-                      ),
-                    );
-                  },
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            // Search Bar
+            TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: 'Search',
+                hintText: 'Search for a country...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ),
+            const SizedBox(height: 10), // Memberi sedikit spasi
+            // List of Countries
+            Expanded(
+              child: FutureBuilder<List<Country>>(
+                future: futureCountries,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (allCountries.isEmpty) {
+                    return const Center(child: Text('No countries found'));
+                  }
+
+                  // Gunakan filteredCountries untuk membangun ListView
+                  return ListView.builder(
+                    itemCount: filteredCountries.length,
+                    itemBuilder: (context, i) {
+                      final country = filteredCountries[i];
+                      return Card(
+                        child: ListTile(
+                          leading: country.flagsPng != null
+                              ? Image.network(country.flagsPng!, width: 50)
+                              : const SizedBox(width: 50),
+                          title: Text(country.name),
+                          subtitle: Text(country.region),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailPage(country: country),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+// Class Country tetap sama, tidak perlu diubah
 class Country {
+  // ...
   final String name;
   final String region;
   final String? capital;
