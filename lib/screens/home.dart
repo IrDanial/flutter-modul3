@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'detail.dart';
@@ -11,58 +12,76 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // Variabel dari kedua branch digabungkan
   late Future<List<Country>> futureCountries;
   List<Country> allCountries = [];
   List<Country> filteredCountries = [];
   final TextEditingController searchController = TextEditingController();
+  final Set<String> _favorites = <String>{};
 
   @override
   void initState() {
     super.initState();
+    // Logika dari kedua branch digabungkan
     futureCountries = fetchCountries();
-    // Setelah data didapat, simpan ke dalam list
+    _loadFavorites();
     futureCountries.then((countries) {
       setState(() {
         allCountries = countries;
         filteredCountries = allCountries;
       });
     });
-
-    // Listener untuk memanggil fungsi filter setiap ada perubahan teks
     searchController.addListener(() {
       filterCountries();
     });
   }
 
-  // Hapus listener saat widget dihancurkan untuk mencegah memory leak
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
   }
 
+  // Fungsi untuk memuat favorit dari branch 'dev'
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      final favoriteNames = prefs.getStringList('favoriteCountries') ?? [];
+      _favorites.addAll(favoriteNames);
+    });
+  }
+
+  // Fungsi untuk toggle favorit dari branch 'dev'
+  Future<void> _toggleFavorite(String countryName) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_favorites.contains(countryName)) {
+        _favorites.remove(countryName);
+      } else {
+        _favorites.add(countryName);
+      }
+      prefs.setStringList('favoriteCountries', _favorites.toList());
+    });
+  }
+
+  // Fungsi filter dari branch 'feat/search'
   void filterCountries() {
     List<Country> results = [];
     if (searchController.text.isEmpty) {
-      // Jika search bar kosong, tampilkan semua negara
       results = allCountries;
     } else {
-      // Jika tidak, filter berdasarkan nama
       results = allCountries
           .where((country) => country.name
               .toLowerCase()
               .contains(searchController.text.toLowerCase()))
           .toList();
     }
-
-    // Update state untuk me-render ulang UI dengan daftar yang sudah difilter
     setState(() {
       filteredCountries = results;
     });
   }
 
   Future<List<Country>> fetchCountries() async {
-    // ... (Fungsi fetchCountries tetap sama)
     final uri = Uri.parse('https://www.apicountries.com/countries');
     final request = await HttpClient().getUrl(uri);
     final response = await request.close();
@@ -78,6 +97,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Struktur UI dari branch 'feat/search'
     return Scaffold(
       appBar: AppBar(
         title: const Text('Countries'),
@@ -92,13 +112,13 @@ class _HomePageState extends State<HomePage> {
               decoration: InputDecoration(
                 labelText: 'Search',
                 hintText: 'Search for a country...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(25.0)),
                 ),
               ),
             ),
-            const SizedBox(height: 10), // Memberi sedikit spasi
+            const SizedBox(height: 10),
             // List of Countries
             Expanded(
               child: FutureBuilder<List<Country>>(
@@ -109,14 +129,19 @@ class _HomePageState extends State<HomePage> {
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   } else if (allCountries.isEmpty) {
-                    return const Center(child: Text('No countries found'));
+                    // Cek filteredCountries jika ada teks di search bar
+                    return Center(
+                        child: Text(searchController.text.isNotEmpty
+                            ? 'No countries found'
+                            : 'Loading countries...'));
                   }
 
-                  // Gunakan filteredCountries untuk membangun ListView
+                  // ListView digabungkan dengan logika dari kedua branch
                   return ListView.builder(
                     itemCount: filteredCountries.length,
                     itemBuilder: (context, i) {
                       final country = filteredCountries[i];
+                      final isFavorite = _favorites.contains(country.name);
                       return Card(
                         child: ListTile(
                           leading: country.flagsPng != null
@@ -124,11 +149,22 @@ class _HomePageState extends State<HomePage> {
                               : const SizedBox(width: 50),
                           title: Text(country.name),
                           subtitle: Text(country.region),
+                          // Tombol favorit dari branch 'dev'
+                          trailing: IconButton(
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : null,
+                            ),
+                            onPressed: () => _toggleFavorite(country.name),
+                          ),
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => DetailPage(country: country),
+                                builder: (context) =>
+                                    DetailPage(country: country),
                               ),
                             );
                           },
@@ -146,9 +182,8 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Class Country tetap sama, tidak perlu diubah
+// Class Country tidak berubah
 class Country {
-  // ...
   final String name;
   final String region;
   final String? capital;
@@ -170,18 +205,15 @@ class Country {
   factory Country.fromJson(Map<String, dynamic> json) {
     List<String>? langs;
     if (json['languages'] != null) {
-      langs = (json['languages'] as List)
-          .map((l) => l['name'].toString())
-          .toList();
+      langs =
+          (json['languages'] as List).map((l) => l['name'].toString()).toList();
     }
-
     List<String>? cur;
     if (json['currencies'] != null) {
       cur = (json['currencies'] as List)
           .map((c) => c['name'].toString())
           .toList();
     }
-
     return Country(
       name: json['name'] ?? 'N/A',
       region: json['region'] ?? 'N/A',
