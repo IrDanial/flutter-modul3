@@ -51,7 +51,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     255,
                     252,
                     252,
-                  ).withOpacity(0.5), // Using withOpacity is cleaner
+                  ).withOpacity(0.5),
                 ),
               ),
             ),

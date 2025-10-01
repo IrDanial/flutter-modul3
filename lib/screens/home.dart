@@ -12,7 +12,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Variabel dari kedua branch digabungkan
   late Future<List<Country>> futureCountries;
   List<Country> allCountries = [];
   List<Country> filteredCountries = [];
@@ -22,7 +21,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Logika dari kedua branch digabungkan
     futureCountries = fetchCountries();
     _loadFavorites();
     futureCountries.then((countries) {
@@ -42,7 +40,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // Fungsi untuk memuat favorit dari branch 'dev'
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -51,7 +48,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Fungsi untuk toggle favorit dari branch 'dev'
   Future<void> _toggleFavorite(String countryName) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -64,7 +60,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Fungsi filter dari branch 'feat/search'
   void filterCountries() {
     List<Country> results = [];
     if (searchController.text.isEmpty) {
@@ -97,7 +92,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Struktur UI dari branch 'feat/search'
     return Scaffold(
       appBar: AppBar(
         title: const Text('Countries'),
@@ -106,7 +100,6 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            // Search Bar
             TextField(
               controller: searchController,
               decoration: InputDecoration(
@@ -119,7 +112,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 10),
-            // List of Countries
             Expanded(
               child: FutureBuilder<List<Country>>(
                 future: futureCountries,
@@ -129,14 +121,12 @@ class _HomePageState extends State<HomePage> {
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   } else if (allCountries.isEmpty) {
-                    // Cek filteredCountries jika ada teks di search bar
                     return Center(
                         child: Text(searchController.text.isNotEmpty
                             ? 'No countries found'
                             : 'Loading countries...'));
                   }
 
-                  // ListView digabungkan dengan logika dari kedua branch
                   return ListView.builder(
                     itemCount: filteredCountries.length,
                     itemBuilder: (context, i) {
@@ -149,7 +139,6 @@ class _HomePageState extends State<HomePage> {
                               : const SizedBox(width: 50),
                           title: Text(country.name),
                           subtitle: Text(country.region),
-                          // Tombol favorit dari branch 'dev'
                           trailing: IconButton(
                             icon: Icon(
                               isFavorite
@@ -182,7 +171,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Class Country tidak berubah
 class Country {
   final String name;
   final String region;

@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'detail.dart';
-import 'home.dart'; // Kita butuh class Country dari sini
+import 'home.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -21,17 +21,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
     _favoriteCountriesFuture = _getFavoriteCountries();
   }
 
-  // Fungsi untuk mengambil semua negara dari API, lalu memfilternya
   Future<List<Country>> _getFavoriteCountries() async {
-    // 1. Ambil daftar nama negara favorit dari SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final favoriteNames = prefs.getStringList('favoriteCountries') ?? [];
 
     if (favoriteNames.isEmpty) {
-      return []; // Kembalikan list kosong jika tidak ada favorit
+      return []; 
     }
 
-    // 2. Ambil semua data negara dari API (sama seperti di HomePage)
     final uri = Uri.parse('https://www.apicountries.com/countries');
     final request = await HttpClient().getUrl(uri);
     final response = await request.close();
@@ -41,7 +38,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
       final List<dynamic> allCountriesJson = jsonDecode(respBody);
       final allCountries = allCountriesJson.map((j) => Country.fromJson(j)).toList();
 
-      // 3. Filter daftar semua negara berdasarkan nama yang ada di favorit
       return allCountries.where((country) => favoriteNames.contains(country.name)).toList();
     } else {
       throw Exception('Failed to load countries');

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/home.dart';
 import '../screens/profile.dart';
-import '/screens/favourites_page.dart'; // Import halaman baru
+import '/screens/favourites_page.dart'; 
 
 class NavigationPage extends StatefulWidget {
   const NavigationPage({super.key});
@@ -23,7 +23,7 @@ class _NavigationPageState extends State<NavigationPage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       const HomePage(),
-      const FavoritesPage(), // Tambahkan halaman favorit
+      const FavoritesPage(),
       ProfilePage(onHomeTap: () => _onTabTapped(0)),
     ];
 
@@ -37,7 +37,6 @@ class _NavigationPageState extends State<NavigationPage> {
             icon: Icon(Icons.home),
             label: 'Home',
           ),
-          // Tambahkan item navigasi untuk favorit
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite),
             label: 'Favorites',
