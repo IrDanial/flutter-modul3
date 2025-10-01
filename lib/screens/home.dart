@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'detail.dart';
@@ -12,13 +13,38 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Country>> countries;
+  // Gunakan Set untuk efisiensi pengecekan favorit
+  final Set<String> _favorites = <String>{};
 
   @override
   void initState() {
     super.initState();
     countries = fetchCountries();
+    _loadFavorites();
   }
 
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // Ambil daftar favorit, jika tidak ada, gunakan list kosong
+      final favoriteNames = prefs.getStringList('favoriteCountries') ?? [];
+      _favorites.addAll(favoriteNames);
+    });
+  }
+
+  Future<void> _toggleFavorite(String countryName) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_favorites.contains(countryName)) {
+        _favorites.remove(countryName);
+      } else {
+        _favorites.add(countryName);
+      }
+      // Simpan kembali ke SharedPreferences
+      prefs.setStringList('favoriteCountries', _favorites.toList());
+    });
+  }
+  
   Future<List<Country>> fetchCountries() async {
     final uri = Uri.parse('https://www.apicountries.com/countries');
     final request = await HttpClient().getUrl(uri);
@@ -36,9 +62,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Countries'),
-      ),
+      appBar: AppBar(title: const Text('Countries')),
       body: FutureBuilder<List<Country>>(
         future: countries,
         builder: (context, snapshot) {
@@ -49,12 +73,12 @@ class _HomePageState extends State<HomePage> {
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No countries found'));
           }
-
           final list = snapshot.data!;
           return ListView.builder(
             itemCount: list.length,
             itemBuilder: (context, i) {
               final country = list[i];
+              final isFavorite = _favorites.contains(country.name);
               return Card(
                 child: ListTile(
                   leading: country.flagsPng != null
@@ -62,6 +86,14 @@ class _HomePageState extends State<HomePage> {
                       : const SizedBox(width: 50),
                   title: Text(country.name),
                   subtitle: Text(country.region),
+                  // Tombol favorit di sebelah kanan
+                  trailing: IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.red : null,
+                    ),
+                    onPressed: () => _toggleFavorite(country.name),
+                  ),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -80,6 +112,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// Class Country tidak berubah
 class Country {
   final String name;
   final String region;
@@ -100,20 +133,15 @@ class Country {
   });
 
   factory Country.fromJson(Map<String, dynamic> json) {
+    // ... (kode factory tidak berubah)
     List<String>? langs;
     if (json['languages'] != null) {
-      langs = (json['languages'] as List)
-          .map((l) => l['name'].toString())
-          .toList();
+      langs = (json['languages'] as List).map((l) => l['name'].toString()).toList();
     }
-
     List<String>? cur;
     if (json['currencies'] != null) {
-      cur = (json['currencies'] as List)
-          .map((c) => c['name'].toString())
-          .toList();
+      cur = (json['currencies'] as List).map((c) => c['name'].toString()).toList();
     }
-
     return Country(
       name: json['name'] ?? 'N/A',
       region: json['region'] ?? 'N/A',
