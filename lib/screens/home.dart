@@ -12,26 +12,46 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<Country>> countries;
-  // Gunakan Set untuk efisiensi pengecekan favorit
+  // Variabel dari kedua branch digabungkan
+  late Future<List<Country>> futureCountries;
+  List<Country> allCountries = [];
+  List<Country> filteredCountries = [];
+  final TextEditingController searchController = TextEditingController();
   final Set<String> _favorites = <String>{};
 
   @override
   void initState() {
     super.initState();
-    countries = fetchCountries();
+    // Logika dari kedua branch digabungkan
+    futureCountries = fetchCountries();
     _loadFavorites();
+    futureCountries.then((countries) {
+      setState(() {
+        allCountries = countries;
+        filteredCountries = allCountries;
+      });
+    });
+    searchController.addListener(() {
+      filterCountries();
+    });
   }
 
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  // Fungsi untuk memuat favorit dari branch 'dev'
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      // Ambil daftar favorit, jika tidak ada, gunakan list kosong
       final favoriteNames = prefs.getStringList('favoriteCountries') ?? [];
       _favorites.addAll(favoriteNames);
     });
   }
 
+  // Fungsi untuk toggle favorit dari branch 'dev'
   Future<void> _toggleFavorite(String countryName) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -40,11 +60,27 @@ class _HomePageState extends State<HomePage> {
       } else {
         _favorites.add(countryName);
       }
-      // Simpan kembali ke SharedPreferences
       prefs.setStringList('favoriteCountries', _favorites.toList());
     });
   }
-  
+
+  // Fungsi filter dari branch 'feat/search'
+  void filterCountries() {
+    List<Country> results = [];
+    if (searchController.text.isEmpty) {
+      results = allCountries;
+    } else {
+      results = allCountries
+          .where((country) => country.name
+              .toLowerCase()
+              .contains(searchController.text.toLowerCase()))
+          .toList();
+    }
+    setState(() {
+      filteredCountries = results;
+    });
+  }
+
   Future<List<Country>> fetchCountries() async {
     final uri = Uri.parse('https://www.apicountries.com/countries');
     final request = await HttpClient().getUrl(uri);
@@ -61,52 +97,86 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Struktur UI dari branch 'feat/search'
     return Scaffold(
-      appBar: AppBar(title: const Text('Countries')),
-      body: FutureBuilder<List<Country>>(
-        future: countries,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No countries found'));
-          }
-          final list = snapshot.data!;
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final country = list[i];
-              final isFavorite = _favorites.contains(country.name);
-              return Card(
-                child: ListTile(
-                  leading: country.flagsPng != null
-                      ? Image.network(country.flagsPng!, width: 50)
-                      : const SizedBox(width: 50),
-                  title: Text(country.name),
-                  subtitle: Text(country.region),
-                  // Tombol favorit di sebelah kanan
-                  trailing: IconButton(
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.red : null,
-                    ),
-                    onPressed: () => _toggleFavorite(country.name),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetailPage(country: country),
-                      ),
-                    );
-                  },
+      appBar: AppBar(
+        title: const Text('Countries'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            // Search Bar
+            TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: 'Search',
+                hintText: 'Search for a country...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ),
+            const SizedBox(height: 10),
+            // List of Countries
+            Expanded(
+              child: FutureBuilder<List<Country>>(
+                future: futureCountries,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (allCountries.isEmpty) {
+                    // Cek filteredCountries jika ada teks di search bar
+                    return Center(
+                        child: Text(searchController.text.isNotEmpty
+                            ? 'No countries found'
+                            : 'Loading countries...'));
+                  }
+
+                  // ListView digabungkan dengan logika dari kedua branch
+                  return ListView.builder(
+                    itemCount: filteredCountries.length,
+                    itemBuilder: (context, i) {
+                      final country = filteredCountries[i];
+                      final isFavorite = _favorites.contains(country.name);
+                      return Card(
+                        child: ListTile(
+                          leading: country.flagsPng != null
+                              ? Image.network(country.flagsPng!, width: 50)
+                              : const SizedBox(width: 50),
+                          title: Text(country.name),
+                          subtitle: Text(country.region),
+                          // Tombol favorit dari branch 'dev'
+                          trailing: IconButton(
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : null,
+                            ),
+                            onPressed: () => _toggleFavorite(country.name),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    DetailPage(country: country),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -133,14 +203,16 @@ class Country {
   });
 
   factory Country.fromJson(Map<String, dynamic> json) {
-    // ... (kode factory tidak berubah)
     List<String>? langs;
     if (json['languages'] != null) {
-      langs = (json['languages'] as List).map((l) => l['name'].toString()).toList();
+      langs =
+          (json['languages'] as List).map((l) => l['name'].toString()).toList();
     }
     List<String>? cur;
     if (json['currencies'] != null) {
-      cur = (json['currencies'] as List).map((c) => c['name'].toString()).toList();
+      cur = (json['currencies'] as List)
+          .map((c) => c['name'].toString())
+          .toList();
     }
     return Country(
       name: json['name'] ?? 'N/A',
