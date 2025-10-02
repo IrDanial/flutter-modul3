@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../theme_manager.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onHomeTap;
@@ -10,19 +12,18 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  // Data dikembalikan ke satu anggota sesuai permintaan
   final List<Map<String, String>> teamMembers = [
-    {
-      'Nama': 'Muhammad Danial Irfani',
-      'NIM': '21120123130061'
-    },
+    {'Nama': 'Muhammad Danial Irfani', 'NIM': '21120123130061'},
   ];
 
   @override
   Widget build(BuildContext context) {
+    final themeManager = Provider.of<ThemeManager>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
-        backgroundColor: const Color.fromARGB(255, 13, 105, 225),
         actions: [
           IconButton(
             icon: const Icon(Icons.home),
@@ -30,68 +31,104 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-      body: Stack(
-        alignment: Alignment.center,
+      body: ListView(
         children: [
-          Positioned.fill(
-            child: FractionallySizedBox(
-              alignment: Alignment.topCenter,
-              heightFactor: 0.5,
-              child: Container(
-                decoration: BoxDecoration(
-                  image: const DecorationImage(
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    image: NetworkImage(
-                      'https://cdn.myanimelist.net/s/common/uploaded_files/1444014275-106dee95104209bb9436d6df2b6d5145.jpeg',
-                    ),
-                  ),
-                  color: const Color.fromARGB(
-                    255,
-                    255,
-                    252,
-                    252,
-                  ).withOpacity(0.5),
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          // Menggunakan versi dari 'feat/dark-mode' yang sudah diperbaiki
+          SizedBox(
+            height: 350, // Memberi tinggi yang pasti untuk mencegah error layout
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                Container(
-                  width: 100.0,
-                  height: 100.0,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      fit: BoxFit.cover,
-                      image: NetworkImage(
-                        'https://avatars.githubusercontent.com/IrDanial',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                for (var member in teamMembers)
-                  Column(
-                    children: [
-                      Text(
-                        member['Nama'] ?? 'No Name',
-                        style: const TextStyle(
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
+                // Background Image
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        image: NetworkImage(
+                          'https://cdn.myanimelist.net/s/common/uploaded_files/1444014275-106dee95104209bb9436d6df2b6d5145.jpeg',
                         ),
                       ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        member['NIM'] ?? 'No NIM',
-                        style: const TextStyle(fontSize: 16.0),
+                    ),
+                  ),
+                ),
+                // Profile Info Column
+                Positioned(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 100.0,
+                        height: 100.0,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          image: DecorationImage(
+                            fit: BoxFit.cover,
+                            image: NetworkImage(
+                              'https://avatars.githubusercontent.com/IrDanial',
+                            ),
+                          ),
+                        ),
                       ),
+                      const SizedBox(height: 16.0),
+                      for (var member in teamMembers)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                member['Nama'] ?? 'No Name',
+                                style: const TextStyle(
+                                  fontSize: 20.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 8.0),
+                              Text(
+                                member['NIM'] ?? 'No NIM',
+                                style: const TextStyle(
+                                    fontSize: 16.0, color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
+                ),
               ],
+            ),
+          ),
+          // Pembatas antar bagian
+          const Divider(),
+
+          // Bagian untuk pengaturan (Settings)
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Text(
+              'Settings',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Tombol Switch untuk Dark Mode
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SwitchListTile(
+              title: const Text('Dark Mode'),
+              secondary: const Icon(Icons.dark_mode_outlined),
+              value: themeManager.themeMode == ThemeMode.dark,
+              onChanged: (newValue) {
+                themeManager.toggleTheme(newValue);
+              },
             ),
           ),
         ],
