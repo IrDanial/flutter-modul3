@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'detail.dart';
@@ -11,12 +12,68 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<Country>> countries;
+  late Future<List<Country>> futureCountries;
+  List<Country> allCountries = [];
+  List<Country> filteredCountries = [];
+  final TextEditingController searchController = TextEditingController();
+  final Set<String> _favorites = <String>{};
 
   @override
   void initState() {
     super.initState();
-    countries = fetchCountries();
+    futureCountries = fetchCountries();
+    _loadFavorites();
+    futureCountries.then((countries) {
+      setState(() {
+        allCountries = countries;
+        filteredCountries = allCountries;
+      });
+    });
+    searchController.addListener(() {
+      filterCountries();
+    });
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      final favoriteNames = prefs.getStringList('favoriteCountries') ?? [];
+      _favorites.addAll(favoriteNames);
+    });
+  }
+
+  Future<void> _toggleFavorite(String countryName) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_favorites.contains(countryName)) {
+        _favorites.remove(countryName);
+      } else {
+        _favorites.add(countryName);
+      }
+      prefs.setStringList('favoriteCountries', _favorites.toList());
+    });
+  }
+
+  void filterCountries() {
+    List<Country> results = [];
+    if (searchController.text.isEmpty) {
+      results = allCountries;
+    } else {
+      results = allCountries
+          .where((country) => country.name
+              .toLowerCase()
+              .contains(searchController.text.toLowerCase()))
+          .toList();
+    }
+    setState(() {
+      filteredCountries = results;
+    });
   }
 
   Future<List<Country>> fetchCountries() async {
@@ -39,42 +96,76 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Countries'),
       ),
-      body: FutureBuilder<List<Country>>(
-        future: countries,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No countries found'));
-          }
-
-          final list = snapshot.data!;
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final country = list[i];
-              return Card(
-                child: ListTile(
-                  leading: country.flagsPng != null
-                      ? Image.network(country.flagsPng!, width: 50)
-                      : const SizedBox(width: 50),
-                  title: Text(country.name),
-                  subtitle: Text(country.region),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetailPage(country: country),
-                      ),
-                    );
-                  },
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: 'Search',
+                hintText: 'Search for a country...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: FutureBuilder<List<Country>>(
+                future: futureCountries,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (allCountries.isEmpty) {
+                    return Center(
+                        child: Text(searchController.text.isNotEmpty
+                            ? 'No countries found'
+                            : 'Loading countries...'));
+                  }
+
+                  return ListView.builder(
+                    itemCount: filteredCountries.length,
+                    itemBuilder: (context, i) {
+                      final country = filteredCountries[i];
+                      final isFavorite = _favorites.contains(country.name);
+                      return Card(
+                        child: ListTile(
+                          leading: country.flagsPng != null
+                              ? Image.network(country.flagsPng!, width: 50)
+                              : const SizedBox(width: 50),
+                          title: Text(country.name),
+                          subtitle: Text(country.region),
+                          trailing: IconButton(
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : null,
+                            ),
+                            onPressed: () => _toggleFavorite(country.name),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    DetailPage(country: country),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -102,18 +193,15 @@ class Country {
   factory Country.fromJson(Map<String, dynamic> json) {
     List<String>? langs;
     if (json['languages'] != null) {
-      langs = (json['languages'] as List)
-          .map((l) => l['name'].toString())
-          .toList();
+      langs =
+          (json['languages'] as List).map((l) => l['name'].toString()).toList();
     }
-
     List<String>? cur;
     if (json['currencies'] != null) {
       cur = (json['currencies'] as List)
           .map((c) => c['name'].toString())
           .toList();
     }
-
     return Country(
       name: json['name'] ?? 'N/A',
       region: json['region'] ?? 'N/A',

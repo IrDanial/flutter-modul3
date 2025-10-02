@@ -12,6 +12,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  // Data dikembalikan ke satu anggota sesuai permintaan
   final List<Map<String, String>> teamMembers = [
     {'Nama': 'Muhammad Danial Irfani', 'NIM': '21120123130061'},
   ];
@@ -32,9 +33,9 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: ListView(
         children: [
-          // FIX: Wrap the Stack with a SizedBox to give it a fixed height
+          // Menggunakan versi dari 'feat/dark-mode' yang sudah diperbaiki
           SizedBox(
-            height: 350, // <-- Memberi tinggi yang pasti
+            height: 350, // Memberi tinggi yang pasti untuk mencegah error layout
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -54,7 +55,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 // Profile Info Column
                 Positioned(
-                  // Posisikan di tengah
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -74,8 +74,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(height: 16.0),
                       for (var member in teamMembers)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          // Memberi sedikit background agar teks lebih terbaca
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(8),
@@ -93,7 +93,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               const SizedBox(height: 8.0),
                               Text(
                                 member['NIM'] ?? 'No NIM',
-                                style: const TextStyle(fontSize: 16.0, color: Colors.white),
+                                style: const TextStyle(
+                                    fontSize: 16.0, color: Colors.white),
                               ),
                             ],
                           ),
@@ -109,7 +110,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
           // Bagian untuk pengaturan (Settings)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
               'Settings',
               style: Theme.of(context).textTheme.titleLarge,
