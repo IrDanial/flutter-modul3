@@ -12,7 +12,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // Data dikembalikan ke satu anggota sesuai permintaan
   final List<Map<String, String>> teamMembers = [
     {'Nama': 'Muhammad Danial Irfani', 'NIM': '21120123130061'},
   ];
@@ -33,13 +32,11 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: ListView(
         children: [
-          // Menggunakan versi dari 'feat/dark-mode' yang sudah diperbaiki
           SizedBox(
-            height: 350, // Memberi tinggi yang pasti untuk mencegah error layout
+            height: 350,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Background Image
                 Positioned.fill(
                   child: Container(
                     decoration: const BoxDecoration(
@@ -53,7 +50,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                // Profile Info Column
                 Positioned(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -105,10 +101,8 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           ),
-          // Pembatas antar bagian
           const Divider(),
 
-          // Bagian untuk pengaturan (Settings)
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -119,7 +113,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: 10),
 
-          // Tombol Switch untuk Dark Mode
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: SwitchListTile(
